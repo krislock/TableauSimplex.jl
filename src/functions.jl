@@ -251,7 +251,7 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Rational}
     vars = repeat(" ", 5)
     for j = 1:n-1
         if j ∉ Tab.basis || __show_mode__ == :full 
-            bvar = @sprintf("%5s", "x$j")
+            bvar = @sprintf("%10s", "x$j")
         else
             bvar = @sprintf("%4s", "x$j")
             bvar = ""
@@ -299,7 +299,7 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Rational}
                 if tmp == 0
                     ns = ""
                 end
-                ns = @sprintf("%5s", ns)
+                ns = @sprintf("%10s", ns)
             else
                 ns = @sprintf("%4d", numerator(tmp))
                 ns = ""
