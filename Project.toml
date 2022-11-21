@@ -1,0 +1,13 @@
+name = "TableauSimplex"
+uuid = "64219c2e-3dfd-4bb7-a8b4-69ba43228b29"
+authors = ["Nathan Krislock <nkrislock@niu.edu>"]
+version = "0.1.0"
+
+[compat]
+julia = "1.8"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
