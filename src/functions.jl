@@ -2,19 +2,28 @@ import Base.show
 import Base.copy
 using Printf, LinearAlgebra
 
-__show_mode__ = :full
+__show_mode__ = :compact
 
-struct Tableau{T}
+struct Tableau{T <: Real}
     table::Matrix{T}
     basis::Vector{Int}
+    varnames::Vector{String}
+end
+
+################
+function Tableau(table::Matrix{T}, basis::Vector{Int}) where {T <: Real}
+    n = size(table, 2) - 1
+    varnames = ["x$i" for i = 1:n]
+    return Tableau(table, basis, varnames)
 end
 
 ################
 function pivot!(A::Matrix{T}, p::Int, q::Int) where {T}
+
     m, n = size(A)
 
     A[p,:] /= A[p,q]
-    
+
     for i = 1:m
         if i != p
             tmp = A[i,q]
@@ -29,6 +38,7 @@ end
 
 ################
 function pivot!(Tab::Tableau{T}, entervar::Int, leavevar::Int) where {T}
+
     var = findfirst(isequal(leavevar), Tab.basis)
     isnothing(var) && error("x$leave is not a basic variable.")
 
@@ -40,7 +50,6 @@ end
 
 ################
 function tableau(A::Matrix{T}, b::Vector{T}, c::Vector{T}) where {T}
-    #all(b .>= 0) || error("A x <= b constraints need b >= 0")
 
     m, n = size(A)
 
@@ -52,8 +61,10 @@ end
 
 ################
 function bfs(Tab::Tableau{T}) where {T}
+
     x = zeros(T, nvars(Tab))
     x[Tab.basis] = rhs(Tab)
+
     return x
 end
 
@@ -65,14 +76,17 @@ objval(Tab::Tableau{T}) where {T} = Tab.table[1,end]
 
 ################
 function clean!(Tab::Tableau{T}) where {T}
+
     for var in Tab.basis
         pivot!(Tab, var, var)
     end
+
     return Tab
 end
 
 ################
 function simplex!(Tab::Tableau{T}; verbose=false) where {T}
+
     verbose && println(Tab)
     status = "Unsolved"
 
@@ -98,14 +112,24 @@ function simplex!(Tab::Tableau{T}; verbose=false) where {T}
         simplexpivot!(Tab, entervar, verbose=verbose)
         verbose && println(Tab)
     end
-    
+
     verbose && println("\n", status, "\n")
 
     return Tab
 end
 
 ################
+function simplexpivot!(
+        Tab::Tableau{T}, entervar::String; verbose=false) where {T}
+
+    ind = findfirst(isequal(entervar), Tab.varnames)
+
+    return simplexpivot!(Tab, ind, verbose=verbose)
+end
+
+################
 function simplexpivot!(Tab::Tableau{T}, entervar::Int; verbose=false) where {T}
+
     # Find leaving variable
     entercol = Tab.table[2:end,entervar]
     rows = entercol .> 0
@@ -116,12 +140,14 @@ function simplexpivot!(Tab::Tableau{T}, entervar::Int; verbose=false) where {T}
     # Perform pivot
     pivot!(Tab, entervar, leavevar)
 
-    verbose && @printf("\nx%d enters, x%d leaves\n", entervar, leavevar)
+    entername, leavename = Tab.varnames[entervar], Tab.varnames[leavevar]
+    verbose && @printf("\n%s enters, %s leaves\n", entername, leavename)
     return Tab
 end
 
 ################
 function dualsimplex!(Tab::Tableau{T}; verbose=false) where {T}
+
     verbose && println(Tab)
     status = "Unsolved"
 
@@ -155,7 +181,18 @@ function dualsimplex!(Tab::Tableau{T}; verbose=false) where {T}
 end
 
 ################
-function dualsimplexpivot!(Tab::Tableau{T}, leavevar::Int; verbose=false) where {T}
+function dualsimplexpivot!(
+        Tab::Tableau{T}, leavevar::String; verbose=false) where {T}
+
+    ind = findfirst(isequal(leavevar), Tab.varnames)
+
+    return dualsimplexpivot!(Tab, ind, verbose=verbose)
+end
+
+################
+function dualsimplexpivot!(
+        Tab::Tableau{T}, leavevar::Int; verbose=false) where {T}
+
     # Find entering variable
     ind = findfirst(isequal(leavevar), Tab.basis)
     leaverow = Tab.table[ind+1,1:end-1]
@@ -172,8 +209,12 @@ function dualsimplexpivot!(Tab::Tableau{T}, leavevar::Int; verbose=false) where 
 end
 
 ################
-function addGomorycuts(Tab::Tableau{T}, vars::AbstractVector{Int}) where {T}
-    inds = [findfirst(isequal(var), Tab.basis) for var in vars if var in Tab.basis]
+function addGomorycuts(
+        Tab::Tableau{T}, vars::AbstractVector{Int}) where {T}
+
+    inds = [findfirst(isequal(var), Tab.basis)
+            for var in vars if var in Tab.basis]
+
     ncuts = length(inds)
     rows = Tab.table[inds.+1,:]
 
@@ -190,17 +231,22 @@ function addGomorycuts(Tab::Tableau{T}, vars::AbstractVector{Int}) where {T}
     table[end-ncuts+1:end,1:end-ncuts-1] = newrows[:,1:end-1]
     table[end-ncuts+1:end,end-ncuts:end-1] = diagm(ones(T, ncuts))
     table[end-ncuts+1:end,end] = newrows[:,end]
-    
+
     # Add the slack variable for the cut to the basis
     basis = [Tab.basis; nvars(Tab)+1:nvars(Tab)+ncuts]
 
-    return Tableau(table, basis)
+    # Add varname for slack variable
+    varnames = [Tab.varnames; ["s$i" for i=nvars(Tab)+1:nvars(Tab)+ncuts]]
+
+    return Tableau(table, basis, varnames)
 end
 
 ################
 function addGomorycuts(Tab::Tableau{T}) where {T}
+
     inds = findall(.!isinteger.(rhs(Tab)))
     fracvars = Tab.basis[inds]
+
     return addGomorycuts(Tab, fracvars)
 end
 
@@ -208,14 +254,35 @@ end
 addGomorycut(Tab::Tableau{T}, var::Int) where {T} = addGomorycuts(Tab, [var])
 
 ################
-copy(Tab::Tableau{T}) where {T} = Tableau(copy(Tab.table), copy(Tab.basis))
+copy(Tab::Tableau{T}) where {T} =
+    Tableau(copy(Tab.table), copy(Tab.basis), copy(Tab.varnames))
+
+################
 simplex(Tab::Tableau{T}; kwargs...) where {T} = simplex!(copy(Tab); kwargs...)
-simplexpivot(Tab::Tableau{T}, entervar::Int; kwargs...) where {T} = simplexpivot!(copy(Tab), entervar; kwargs...)
-dualsimplex(Tab::Tableau{T}; kwargs...) where {T} = dualsimplex!(copy(Tab); kwargs...)
-dualsimplexpivot(Tab::Tableau{T}, leavevar::Int; kwargs...) where {T} = dualsimplexpivot!(copy(Tab), leavevar; kwargs...)
+
+################
+simplexpivot(Tab::Tableau{T}, entervar::String; kwargs...) where {T} =
+    simplexpivot!(copy(Tab), entervar; kwargs...)
+
+################
+simplexpivot(Tab::Tableau{T}, entervar::Int; kwargs...) where {T} =
+    simplexpivot!(copy(Tab), entervar; kwargs...)
+
+################
+dualsimplex(Tab::Tableau{T}; kwargs...) where {T} =
+    dualsimplexdualsimplex!(copy(Tab); kwargs...)
+
+################
+dualsimplexpivot(Tab::Tableau{T}, leavevar::String; kwargs...) where {T} =
+    dualsimplexpivot!(copy(Tab), leavevar; kwargs...)
+
+################
+dualsimplexpivot(Tab::Tableau{T}, leavevar::Int; kwargs...) where {T} =
+    dualsimplexpivot!(copy(Tab), leavevar; kwargs...)
 
 ################
 function solveip(Tab::Tableau{T}; verbose=false) where {T}
+
     # Solve the linear relaxation
     myTab = simplex(Tab, verbose=verbose)
 
@@ -238,22 +305,45 @@ function solveip(Tab::Tableau{T}; verbose=false) where {T}
 end
 
 ################
-function solveip(A::Matrix{T}, b::Vector{T}, c::Vector{T}; verbose=false) where {T}
-    all(isinteger.(A)) && all(isinteger.(b)) || error("A and b must be integer")
+function solveip(
+        A::Matrix{T}, b::Vector{T}, c::Vector{T}; verbose=false) where {T}
+
+    all(isinteger.(A)) && all(isinteger.(b)) ||
+        error("A and b must be integer")
+
     return solveip(tableau(A, b, c), verbose=verbose)
 end
 
+
 ################
-function show(io::IO, Tab::Tableau{T}) where {T <: Rational}
+function num2string(num::T) where {T <: Real}
+
+    # Pretty print integers and fractions
+    if num == 0
+        ns = ""
+    elseif T == Rational{Int}
+        ns = "$(numerator(num))"
+        if denominator(num) != 1
+            ns = "$ns/$(denominator(num))"
+        end
+    else
+        ns = "$num"
+    end
+
+    return ns
+end
+
+################
+function show(io::IO, Tab::Tableau{T}) where {T <: Real}
+
     m, n = size(Tab.table)
 
     # Label the columns with the non-basic variables
     vars = repeat(" ", 5)
     for j = 1:n-1
-        if j ∉ Tab.basis || __show_mode__ == :full 
-            bvar = @sprintf("%10s", "x$j")
+        if j ∉ Tab.basis || __show_mode__ == :full
+            bvar = @sprintf("%10s", Tab.varnames[j])
         else
-            bvar = @sprintf("%4s", "x$j")
             bvar = ""
         end
         vars = "$vars$bvar"
@@ -271,7 +361,7 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Rational}
 
         # Print the basic variable
         if i != 1
-            bvar = @sprintf("x%d", Tab.basis[i-1])
+            bvar = Tab.varnames[Tab.basis[i-1]]
             bvar = @sprintf("%-4s", bvar)
             s = "$s$bvar|"
         end
@@ -281,27 +371,15 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Rational}
             tmp = Tab.table[i,j]
 
             # Before the last column, print a divider |
-            if j == n 
+            if j == n
                 s = "$s |"
             end
 
             # Only print the non-basic columns
-            if j ∉ Tab.basis || __show_mode__ == :full 
-                # Pretty print integers and fractions
-                if T == Rational{Int}
-                    ns = "$(numerator(tmp))"
-                    if denominator(tmp) != 1
-                        ns = "$ns/$(denominator(tmp))"
-                    end
-                else
-                    ns = "$tmp"
-                end
-                if tmp == 0
-                    ns = ""
-                end
+            if j ∉ Tab.basis || __show_mode__ == :full
+                ns = num2string(tmp)
                 ns = @sprintf("%10s", ns)
             else
-                ns = @sprintf("%4d", numerator(tmp))
                 ns = ""
             end
             s = "$s$ns"
