@@ -342,11 +342,11 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Real}
     vars = repeat(" ", 5)
     for j = 1:n-1
         if j ∉ Tab.basis || __show_mode__ == :full
-            bvar = @sprintf("%6s", Tab.varnames[j])
+            bvar = @sprintf(" %6s", Tab.varnames[j])
         else
             bvar = ""
         end
-        vars = "$vars $bvar"
+        vars = "$vars$bvar"
     end
 
     s = @sprintf("%-4s|", "Z")
@@ -378,11 +378,11 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Real}
             # Only print the non-basic columns
             if j ∉ Tab.basis || __show_mode__ == :full
                 ns = num2string(tmp)
-                ns = @sprintf("%6s", ns)
+                ns = @sprintf(" %6s", ns)
             else
                 ns = ""
             end
-            s = "$s $ns"
+            s = "$s$ns"
         end
 
         # Print a newline character
