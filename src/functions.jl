@@ -270,7 +270,7 @@ simplexpivot(Tab::Tableau{T}, entervar::Int; kwargs...) where {T} =
 
 ################
 dualsimplex(Tab::Tableau{T}; kwargs...) where {T} =
-    dualsimplexdualsimplex!(copy(Tab); kwargs...)
+    dualsimplex!(copy(Tab); kwargs...)
 
 ################
 dualsimplexpivot(Tab::Tableau{T}, leavevar::String; kwargs...) where {T} =
