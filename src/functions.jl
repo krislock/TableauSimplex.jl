@@ -346,7 +346,7 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Real}
         else
             bvar = ""
         end
-        vars = "$vars$bvar"
+        vars = "$vars $bvar"
     end
 
     s = @sprintf("%-4s|", "Z")
@@ -382,7 +382,7 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Real}
             else
                 ns = ""
             end
-            s = "$s$ns"
+            s = "$s $ns"
         end
 
         # Print a newline character
