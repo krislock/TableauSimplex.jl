@@ -28,7 +28,9 @@ end
 table = Rational{Int}[ zeros(1, n) ones(1, length(E0)-n) 0; 
                        A0[1:end-1,:] b ]
 basis = collect(n+1:n+m)
-T1 = Tableau(table, basis)
+varnames = ["x$i$j" for (i,j) in E]
+artificials = ["a$i" for i in V]
+T1 = Tableau(table, basis, [varnames; artificials])
 println(T1)
 println("\nCleaning tableau ...")
 clean!(T1)
@@ -40,7 +42,6 @@ table = [
     c' 0
     T1.table[inds.+1, 1:n] T1.table[inds.+1, end] ]
 basis = T1.basis[inds]
-varnames = ["x$i$j" for (i,j) in E]
 T2 = Tableau(table, basis, varnames)
 println(T2)
 println("\nCleaning tableau ...")
