@@ -254,6 +254,12 @@ end
 addGomorycut(Tab::Tableau{T}, var::Int) where {T} = addGomorycuts(Tab, [var])
 
 ################
+function addGomorycut(Tab::Tableau{T}, var::String) where {T}
+    ind = findfirst(isequal(var), Tab.varnames)
+    return addGomorycuts(Tab, [ind])
+end
+
+################
 copy(Tab::Tableau{T}) where {T} =
     Tableau(copy(Tab.table), copy(Tab.basis), copy(Tab.varnames))
 
@@ -327,7 +333,7 @@ function num2string(num::T) where {T <: Real}
             ns = "$ns/$(denominator(num))"
         end
     else
-        ns = "$num"
+        ns = @sprintf("%.2f", num)
     end
 
     return ns
@@ -342,7 +348,7 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Real}
     vars = repeat(" ", 5)
     for j = 1:n-1
         if j ∉ Tab.basis || __show_mode__ == :full
-            bvar = @sprintf(" %6s", Tab.varnames[j])
+            bvar = @sprintf(" %9s", Tab.varnames[j])
         else
             bvar = ""
         end
@@ -378,7 +384,7 @@ function show(io::IO, Tab::Tableau{T}) where {T <: Real}
             # Only print the non-basic columns
             if j ∉ Tab.basis || __show_mode__ == :full
                 ns = num2string(tmp)
-                ns = @sprintf(" %6s", ns)
+                ns = @sprintf(" %9s", ns)
             else
                 ns = ""
             end
