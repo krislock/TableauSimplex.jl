@@ -248,15 +248,22 @@ function addGomorycuts(
     basis = [Tab.basis; nvars(Tab)+1:nvars(Tab)+ncuts]
 
     # Add varname for slack variable
-    varnames = [Tab.varnames; ["s$i" for i=nvars(Tab)+1:nvars(Tab)+ncuts]]
+    varnames = [Tab.varnames; ["c$i" for i=nvars(Tab)+1:nvars(Tab)+ncuts]]
 
     return Tableau(table, basis, varnames)
 end
 
 ################
-function addGomorycuts(Tab::Tableau{T}) where {T}
+function nonintegerinds(v::Vector{T}) where {T <: Real}
+    tol = (T <: AbstractFloat) ? sqrt(eps(T)) : 0
+    inds = abs.(v) .> tol .&& abs.(round.(v) - v) .> tol*abs.(v)
+    return inds
+end
 
-    inds = findall(.!isinteger.(rhs(Tab)))
+################
+function addGomorycuts(Tab::Tableau{T}) where {T <: Real}
+
+    inds = nonintegerinds(rhs(Tab))
     fracvars = Tab.basis[inds]
 
     return addGomorycuts(Tab, fracvars)
@@ -299,16 +306,17 @@ dualsimplexpivot(Tab::Tableau{T}, leavevar::Int; kwargs...) where {T} =
     dualsimplexpivot!(copy(Tab), leavevar; kwargs...)
 
 ################
-function solveip(Tab::Tableau{T}; verbose=false) where {T}
+function solveip(Tab::Tableau{T}; maxit=100, verbose=false) where {T <: Real}
 
     # Solve the linear relaxation
     myTab = simplex(Tab, verbose=verbose)
 
-    while true
+    k = 0
+    while k < maxit
         # Find noninteger entries in the rhs
-        inds = findall(.!isinteger.(rhs(myTab)))
+        inds = nonintegerinds(rhs(myTab))
         # Test for optimality of Integer Program (IP)
-        isempty(inds) && break
+        any(inds) || break
         # Find all fractional basic variables
         fracvars = myTab.basis[inds]
         # Randomly select one of the fractional basic variables
@@ -317,7 +325,11 @@ function solveip(Tab::Tableau{T}; verbose=false) where {T}
         myTab = addGomorycut(myTab, var)
         # Run the dual simplex method to return to optimality
         dualsimplex!(myTab, verbose=verbose)
+        # Count the iteration
+        k += 1
     end
+
+    k == maxit && @warn("Integer optimal solution not found.")
 
     return myTab
 end
@@ -337,7 +349,7 @@ end
 function num2string(num::T) where {T <: Real}
 
     # Pretty print integers and fractions
-    if num == 0
+    if num == 0 || (T <: AbstractFloat && abs(num) < eps(T))
         ns = ""
     elseif T == Rational{Int}
         ns = "$(numerator(num))"
