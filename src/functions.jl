@@ -49,6 +49,18 @@ function pivot!(Tab::Tableau{T}, entervar::Int, leavevar::Int) where {T}
 end
 
 ################
+function pivot!(Tab::Tableau{T}, entervar::String, leavevar::String) where {T}
+
+    enterind = findfirst(isequal(entervar), Tab.varnames)
+    leaveind = findfirst(isequal(leavevar), Tab.varnames)
+
+    pivot!(Tab, enterind, leaveind)
+
+    return Tab
+end
+
+
+################
 function tableau(A::Matrix{T}, b::Vector{T}, c::Vector{T}) where {T}
 
     m, n = size(A)
