@@ -4,14 +4,14 @@ using Printf, LinearAlgebra
 
 __show_mode__ = :compact
 
-struct Tableau{T <: Real}
+struct Tableau{T <: Number}
     table::Matrix{T}
     basis::Vector{Int}
     varnames::Vector{String}
 end
 
 ################
-function Tableau(table::Matrix{T}, basis::Vector{Int}) where {T <: Real}
+function Tableau(table::Matrix{T}, basis::Vector{Int}) where {T <: Number}
     n = size(table, 2) - 1
     varnames = ["x$i" for i = 1:n]
     return Tableau(table, basis, varnames)
@@ -254,14 +254,14 @@ function addGomorycuts(
 end
 
 ################
-function nonintegerinds(v::Vector{T}) where {T <: Real}
+function nonintegerinds(v::Vector{T}) where {T <: Number}
     tol = (T <: AbstractFloat) ? sqrt(eps(T)) : 0
     inds = abs.(v) .> tol .&& abs.(round.(v) - v) .> tol*abs.(v)
     return inds
 end
 
 ################
-function addGomorycuts(Tab::Tableau{T}) where {T <: Real}
+function addGomorycuts(Tab::Tableau{T}) where {T <: Number}
 
     inds = nonintegerinds(rhs(Tab))
     fracvars = Tab.basis[inds]
@@ -306,7 +306,7 @@ dualsimplexpivot(Tab::Tableau{T}, leavevar::Int; kwargs...) where {T} =
     dualsimplexpivot!(copy(Tab), leavevar; kwargs...)
 
 ################
-function solveip(Tab::Tableau{T}; maxit=100, verbose=false) where {T <: Real}
+function solveip(Tab::Tableau{T}; maxit=100, verbose=false) where {T <: Number}
 
     # Solve the linear relaxation
     myTab = simplex(Tab, verbose=verbose)
@@ -346,7 +346,7 @@ end
 
 
 ################
-function num2string(num::T) where {T <: Real}
+function num2string(num::T) where {T <: Number}
 
     # Pretty print integers and fractions
     if num == 0 || (T <: AbstractFloat && abs(num) < eps(T))
@@ -357,14 +357,15 @@ function num2string(num::T) where {T <: Real}
             ns = "$ns/$(denominator(num))"
         end
     else
-        ns = @sprintf("%.2f", num)
+        #ns = @sprintf("%.2f", num)
+        ns = "$num"
     end
 
     return ns
 end
 
 ################
-function show(io::IO, Tab::Tableau{T}) where {T <: Real}
+function show(io::IO, Tab::Tableau{T}) where {T <: Number}
 
     m, n = size(Tab.table)
 
